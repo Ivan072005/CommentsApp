@@ -1,0 +1,27 @@
+services:
+  redis:
+    image: redis:7
+    container_name: comments-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: comments-rabbitmq
+    hostname: comments-rabbitmq        # RabbitMQ хранит данные по имени узла; фиксируем, чтобы очереди не терялись
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:5672:5672"          # для API (протокол AMQP)
+      - "127.0.0.1:15672:15672"        # веб-панель
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  rabbitmq-data:
