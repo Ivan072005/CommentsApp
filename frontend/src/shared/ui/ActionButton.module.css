@@ -1,0 +1,35 @@
+.button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.button svg {
+  transition: transform 0.2s;
+}
+
+/* стрелка "раскрыть" поворачивается, когда ответы открыты */
+.active svg {
+  transform: rotate(180deg);
+}

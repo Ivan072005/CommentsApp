@@ -7,7 +7,11 @@ import {
   type Comment,
 } from '../../../entities/comment';
 import { AddCommentForm } from '../../../features/add-comment';
+import { ActionButton } from '../../../shared/ui/ActionButton';
+import { ReplyIcon } from '../../../shared/ui/icons';
 import styles from './RepliesBranch.module.css';
+
+const HIGHLIGHT_MS = 3000;
 
 interface RepliesBranchProps {
   parentId: number;
@@ -17,10 +21,21 @@ interface RepliesBranchProps {
 // Ветка ответов: грузит ответы на parentId и рисует их.
 // Каждый ответ может раскрыть СВОЮ ветку — компонент вызывает сам себя (рекурсия).
 export function RepliesBranch({ parentId, reloadKey = 0 }: RepliesBranchProps) {
-  // Кто-то (в любой вкладке) ответил в эту ветку — перезагружаем её (WebSocket)
   const [liveKey, setLiveKey] = useState(0);
+  const [freshIds, setFreshIds] = useState<Set<number>>(() => new Set());
+
+  // Кто-то (в любой вкладке) ответил в эту ветку — перезагружаем её и подсвечиваем новый ответ
   useCommentCreated((comment) => {
-    if (comment.parentId === parentId) setLiveKey((k) => k + 1);
+    if (comment.parentId !== parentId) return;
+    setLiveKey((k) => k + 1);
+    setFreshIds((prev) => new Set(prev).add(comment.id));
+    setTimeout(() => {
+      setFreshIds((prev) => {
+        const next = new Set(prev);
+        next.delete(comment.id);
+        return next;
+      });
+    }, HIGHLIGHT_MS);
   });
 
   const { replies, loading, error } = useReplies(parentId, reloadKey + liveKey);
@@ -31,13 +46,13 @@ export function RepliesBranch({ parentId, reloadKey = 0 }: RepliesBranchProps) {
   return (
     <div className={styles.branch}>
       {replies.map((reply) => (
-        <ReplyItem key={reply.id} comment={reply} />
+        <ReplyItem key={reply.id} comment={reply} highlight={freshIds.has(reply.id)} />
       ))}
     </div>
   );
 }
 
-function ReplyItem({ comment }: { comment: Comment }) {
+function ReplyItem({ comment, highlight }: { comment: Comment; highlight: boolean }) {
   const [open, setOpen] = useState(false);         // раскрыты ли ответы на этот комментарий
   const [replying, setReplying] = useState(false); // открыта ли форма ответа
 
@@ -65,12 +80,13 @@ function ReplyItem({ comment }: { comment: Comment }) {
   return (
     <CommentCard
       comment={comment}
+      highlight={highlight}
       footer={
         <>
           <div className={styles.actions}>
-            <button type="button" className={styles.linkButton} onClick={() => setReplying((r) => !r)}>
-              {replying ? 'Отменить ответ' : 'Ответить'}
-            </button>
+            <ActionButton icon={<ReplyIcon />} active={replying} onClick={() => setReplying((r) => !r)}>
+              {replying ? 'Отменить' : 'Ответить'}
+            </ActionButton>
             {repliesCount > 0 && (
               <RepliesToggle count={repliesCount} open={open} onToggle={() => setOpen((o) => !o)} />
             )}
@@ -78,8 +94,8 @@ function ReplyItem({ comment }: { comment: Comment }) {
 
           {replying && (
             <div className={styles.replyForm}>
-              <div className={styles.replyTitle}>Ответ для {comment.userName}</div>
               <AddCommentForm
+                title={`Ответ для ${comment.userName}`}
                 parentId={comment.id}
                 onCreated={handleCreated}
                 onCancel={() => setReplying(false)}

@@ -1,66 +1,120 @@
+/* На узких экранах таблица прокручивается по горизонтали, а не ломает страницу */
+.wrap {
+  overflow-x: auto;
+}
+
 .table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 14px;
 }
 
 .table th,
 .table td {
-  border-bottom: 1px solid #3a3a42;
-  padding: 8px 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
 }
 
 .table th {
-  background: #26262c;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.table tbody tr:not(.expandedRow) {
+  transition: background 0.15s;
+}
+
+.table tbody tr:not(.expandedRow):hover {
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .sortButton {
-  background: none;
-  border: none;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
   padding: 0;
+  border: none;
+  background: none;
   color: inherit;
   font: inherit;
-  font-weight: 600;
+  letter-spacing: inherit;
+  text-transform: inherit;
   cursor: pointer;
 }
 
 .sortButton:hover {
-  color: #7aa2ff;
+  color: var(--text);
 }
 
-.nowrap { white-space: nowrap; }
-.center { text-align: center; }
-.text   { word-break: break-word; white-space: pre-wrap; } /* сохраняем переносы строк */
-.empty  { text-align: center; color: #888; }
-.muted  { color: #888; }
-
-/* Раскрытая ветка ответов под строкой */
-.expandedRow td {
-  background: #222228;
+.sortIcon {
+  opacity: 0.5;
+  font-size: 13px;
 }
 
-/* "Ответить" + "Показать ответы" друг под другом */
+.sortActive {
+  color: var(--accent);
+}
+
+.sortActive .sortIcon {
+  opacity: 1;
+}
+
+.user {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.comment {
+  width: 100%;
+}
+
+.text {
+  word-break: break-word;
+  white-space: pre-wrap; /* сохраняем переносы строк */
+}
+
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   align-items: flex-start;
 }
 
-.linkButton {
-  padding: 0;
-  border: none;
-  background: none;
-  color: #7aa2ff;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
+.empty {
+  padding: 40px 14px !important;
+  color: var(--text-muted);
+  text-align: center !important;
 }
 
-.replyTitle {
-  margin-bottom: 6px;
-  color: #9a9aa5;
-  font-size: 13px;
+/* Раскрытая ветка ответов / форма ответа под строкой */
+.expandedRow > td {
+  padding-top: 4px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Новый комментарий (пришёл по WebSocket) — мягко подсвечиваем строку */
+.fresh > td {
+  animation: flash 3s ease-out;
+}
+
+@keyframes flash {
+  0%   { background: rgba(124, 131, 255, 0.28); }
+  100% { background: transparent; }
 }

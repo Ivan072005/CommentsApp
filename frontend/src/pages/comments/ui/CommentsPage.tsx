@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useCommentCreated, useTopComments, type SortBy } from '../../../entities/comment';
 import { AddCommentForm } from '../../../features/add-comment';
+import { AppHeader } from '../../../widgets/app-header';
 import { CommentsTable } from '../../../widgets/comments-table';
 import { RepliesBranch } from '../../../widgets/comment-thread';
 import { Pagination } from '../../../shared/ui/Pagination';
 import styles from './CommentsPage.module.css';
+
+const HIGHLIGHT_MS = 3000;
 
 export function CommentsPage() {
   const [page, setPage] = useState(1);
@@ -12,8 +15,21 @@ export function CommentsPage() {
   const [descending, setDescending] = useState(true); // LIFO: новые сверху
   const [reloadKey, setReloadKey] = useState(0);
   const [hasNewComments, setHasNewComments] = useState(false);
+  const [freshIds, setFreshIds] = useState<Set<number>>(() => new Set());
 
   const { comments, loading, error, hasNext } = useTopComments(page, sortBy, descending, reloadKey);
+
+  // Подсветить строку нового комментария на несколько секунд
+  const highlight = (id: number) => {
+    setFreshIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setFreshIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, HIGHLIGHT_MS);
+  };
 
   // Клик по той же колонке — меняем направление; по новой — сортируем по ней
   const handleSort = (field: SortBy) => {
@@ -26,7 +42,7 @@ export function CommentsPage() {
     setPage(1);
   };
 
-  // После нового комментария показываем первую страницу (новые сверху) и перезагружаем список
+  // Показать первую страницу (новые сверху) и перезагрузить список
   const showNewest = () => {
     setSortBy('date');
     setDescending(true);
@@ -35,48 +51,71 @@ export function CommentsPage() {
     setHasNewComments(false);
   };
 
+  const handleOwnCreated = (id: number) => {
+    showNewest();
+    highlight(id);
+  };
+
   // WebSocket: кто-то (в любой вкладке) добавил комментарий
   const isNewestView = page === 1 && sortBy === 'date' && descending;
   useCommentCreated((comment) => {
-    if (comment.parentId === null && !isNewestView) {
-      // пользователь листает другие страницы/сортировку — не сбиваем его, а предлагаем показать
-      setHasNewComments(true);
-      return;
+    if (comment.parentId === null) {
+      if (!isNewestView) {
+        // пользователь листает другие страницы/сортировку — не сбиваем его, а предлагаем показать
+        setHasNewComments(true);
+        return;
+      }
+      highlight(comment.id);
     }
     // новая строка сверху или изменился счётчик ответов — перезагружаем список
     setReloadKey((k) => k + 1);
   });
 
   return (
-    <main style={{ maxWidth: 1100, margin: '0 auto', padding: 16 }}>
-      <h1>Комментарии</h1>
+    <>
+      <AppHeader />
 
-      <h2 style={{ fontSize: 18 }}>Оставить комментарий</h2>
-      <AddCommentForm onCreated={showNewest} />
+      <main className={styles.main}>
+        <section className={styles.hero}>
+          <h1 className={styles.heading}>
+            Обсуждение <span className={styles.gradientText}>в реальном времени</span>
+          </h1>
+        </section>
 
-      {hasNewComments && (
-        <div className={styles.newBanner}>
-          Появились новые комментарии
-          <button type="button" className={styles.newButton} onClick={showNewest}>
-            Показать
-          </button>
-        </div>
-      )}
+        <AddCommentForm title="Новый комментарий" onCreated={handleOwnCreated} />
 
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Комментарии</h2>
+            {loading && <span className={styles.spinner} aria-label="Загрузка" />}
+          </div>
 
-      <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-        <CommentsTable
-          comments={comments}
-          sortBy={sortBy}
-          descending={descending}
-          onSort={handleSort}
-          renderReplies={(c, branchReloadKey) => <RepliesBranch parentId={c.id} reloadKey={branchReloadKey} />}
-          onReplyCreated={() => setReloadKey((k) => k + 1)}
-        />
-      </div>
+          {hasNewComments && (
+            <div className={styles.newBanner}>
+              Появились новые комментарии
+              <button type="button" className={styles.newButton} onClick={showNewest}>
+                Показать
+              </button>
+            </div>
+          )}
 
-      <Pagination page={page} hasNext={hasNext} onChange={setPage} />
-    </main>
+          {error && <p className={styles.error}>{error}</p>}
+
+          <div className={loading ? styles.loading : undefined}>
+            <CommentsTable
+              comments={comments}
+              sortBy={sortBy}
+              descending={descending}
+              onSort={handleSort}
+              freshIds={freshIds}
+              renderReplies={(c, branchReloadKey) => <RepliesBranch parentId={c.id} reloadKey={branchReloadKey} />}
+              onReplyCreated={() => setReloadKey((k) => k + 1)}
+            />
+          </div>
+
+          <Pagination page={page} hasNext={hasNext} onChange={setPage} />
+        </section>
+      </main>
+    </>
   );
 }

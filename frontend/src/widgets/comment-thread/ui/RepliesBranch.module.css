@@ -1,42 +1,34 @@
-/* Отступ и линия слева показывают уровень вложенности */
+/* Линия слева (с градиентом) показывает уровень вложенности */
 .branch {
-  margin-left: 16px;
-  padding-left: 12px;
-  border-left: 2px solid #3a3a42;
+  margin: 4px 0 0 4px;
+  padding-left: 14px;
+  border-left: 2px solid transparent;
+  border-image: linear-gradient(to bottom, var(--accent-strong), rgba(99, 102, 241, 0.05)) 1;
+  animation: appear 0.25s ease-out;
+}
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .status,
 .error {
-  padding: 6px 0 6px 28px;
+  padding: 8px 0 8px 18px;
   font-size: 13px;
 }
 
-.status { color: #9a9aa5; }
-.error  { color: crimson; }
+.status { color: var(--text-muted); }
+.error  { color: var(--danger); }
 
-/* "Ответить" + "Показать ответы" в одну строку */
+/* "Ответить" + "Ответы (N)" в одну строку */
 .actions {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 
-.linkButton {
-  padding: 0;
-  border: none;
-  background: none;
-  color: #7aa2ff;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
 .replyForm {
-  margin-top: 8px;
-}
-
-.replyTitle {
-  margin-bottom: 6px;
-  color: #9a9aa5;
-  font-size: 13px;
+  margin-top: 10px;
 }
