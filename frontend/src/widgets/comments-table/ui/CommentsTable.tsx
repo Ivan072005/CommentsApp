@@ -1,5 +1,7 @@
-import type { Comment, SortBy } from '../../../entities/comment';
+import { Fragment, useState, type ReactNode } from 'react';
+import { RepliesToggle, type Comment, type SortBy } from '../../../entities/comment';
 import { formatDate } from '../../../shared/lib/formatDate';
+import { isSafeUrl } from '../../../shared/lib/isSafeUrl';
 import styles from './CommentsTable.module.css';
 
 interface CommentsTableProps {
@@ -7,6 +9,7 @@ interface CommentsTableProps {
   sortBy: SortBy;
   descending: boolean;
   onSort: (field: SortBy) => void;
+  renderReplies: (comment: Comment) => ReactNode; // что показать под раскрытой строкой
 }
 
 const SORTABLE_COLUMNS: { field: SortBy; title: string }[] = [
@@ -15,10 +18,17 @@ const SORTABLE_COLUMNS: { field: SortBy; title: string }[] = [
   { field: 'date', title: 'Дата' },
 ];
 
-// Ссылку на домашнюю страницу показываем только для http/https (защита от javascript:)
-const isSafeUrl = (url: string) => /^https?:\/\//i.test(url);
+export function CommentsTable({ comments, sortBy, descending, onSort, renderReplies }: CommentsTableProps) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
-export function CommentsTable({ comments, sortBy, descending, onSort }: CommentsTableProps) {
+  const toggle = (id: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
     <table className={styles.table}>
       <thead>
@@ -41,21 +51,36 @@ export function CommentsTable({ comments, sortBy, descending, onSort }: Comments
             <td colSpan={5} className={styles.empty}>Комментариев пока нет</td>
           </tr>
         )}
+
         {comments.map((c) => (
-          <tr key={c.id}>
-            <td className={styles.nowrap}>
-              {c.homePage && isSafeUrl(c.homePage) ? (
-                <a href={c.homePage} target="_blank" rel="noopener noreferrer nofollow">{c.userName}</a>
-              ) : (
-                c.userName
-              )}
-            </td>
-            <td>{c.email}</td>
-            <td className={styles.nowrap}>{formatDate(c.createdAt)}</td>
-            {/* Текст уже очищен сервером по белому списку тегов */}
-            <td className={styles.text} dangerouslySetInnerHTML={{ __html: c.text }} />
-            <td className={styles.center}>{c.repliesCount}</td>
-          </tr>
+          <Fragment key={c.id}>
+            <tr>
+              <td className={styles.nowrap}>
+                {c.homePage && isSafeUrl(c.homePage) ? (
+                  <a href={c.homePage} target="_blank" rel="noopener noreferrer nofollow">{c.userName}</a>
+                ) : (
+                  c.userName
+                )}
+              </td>
+              <td>{c.email}</td>
+              <td className={styles.nowrap}>{formatDate(c.createdAt)}</td>
+              {/* Текст уже очищен сервером по белому списку тегов */}
+              <td className={styles.text} dangerouslySetInnerHTML={{ __html: c.text }} />
+              <td className={styles.nowrap}>
+                {c.repliesCount > 0 ? (
+                  <RepliesToggle count={c.repliesCount} open={expanded.has(c.id)} onToggle={() => toggle(c.id)} />
+                ) : (
+                  <span className={styles.muted}>—</span>
+                )}
+              </td>
+            </tr>
+
+            {expanded.has(c.id) && (
+              <tr className={styles.expandedRow}>
+                <td colSpan={5}>{renderReplies(c)}</td>
+              </tr>
+            )}
+          </Fragment>
         ))}
       </tbody>
     </table>

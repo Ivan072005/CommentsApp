@@ -1,0 +1,15 @@
+/* Отступ и линия слева показывают уровень вложенности */
+.branch {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px solid #3a3a42;
+}
+
+.status,
+.error {
+  padding: 6px 0 6px 28px;
+  font-size: 13px;
+}
+
+.status { color: #9a9aa5; }
+.error  { color: crimson; }

@@ -34,3 +34,9 @@
 .center { text-align: center; }
 .text   { word-break: break-word; }
 .empty  { text-align: center; color: #888; }
+.muted  { color: #888; }
+
+/* Раскрытая ветка ответов под строкой */
+.expandedRow td {
+  background: #222228;
+}

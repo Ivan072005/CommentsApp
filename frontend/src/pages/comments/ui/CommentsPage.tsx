@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTopComments, type SortBy } from '../../../entities/comment';
 import { CommentsTable } from '../../../widgets/comments-table';
+import { RepliesBranch } from '../../../widgets/comment-thread';
 import { Pagination } from '../../../shared/ui/Pagination';
 
 export function CommentsPage() {
@@ -33,6 +34,7 @@ export function CommentsPage() {
           sortBy={sortBy}
           descending={descending}
           onSort={handleSort}
+          renderReplies={(c) => <RepliesBranch parentId={c.id} />}
         />
       </div>
 
