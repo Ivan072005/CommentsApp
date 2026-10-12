@@ -27,6 +27,10 @@ public class ExceptionHandlingMiddleware
             var errors = ex.Errors.Select(e => new { Field = e.PropertyName, Message = e.ErrorMessage });
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { Errors = errors }));
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // Клиент сам прервал запрос (обновил/закрыл страницу) — отвечать уже некому, это не ошибка
+        }
         catch (Exception)
         {
             context.Response.ContentType = "application/json";

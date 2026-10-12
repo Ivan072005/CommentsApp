@@ -17,7 +17,7 @@ import styles from './AddCommentForm.module.css';
 
 interface AddCommentFormProps {
   parentId?: number;        // если задан — это ответ на комментарий
-  onCreated: () => void;    // вызвать после успешной отправки (обновить список)
+  onCreated: (commentId: number) => void; // вызвать после успешной отправки (обновить список)
   onCancel?: () => void;    // кнопка "Отмена" (для формы ответа)
 }
 
@@ -92,14 +92,14 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
 
     setSubmitting(true);
     try {
-      await createComment(formData);
+      const created = await createComment(formData);
 
       saveAuthor({ userName: values.userName.trim(), email: values.email.trim(), homePage: values.homePage.trim() });
       setValues((v) => ({ ...v, text: '', captchaCode: '' }));
       clearFile();
       setPreviewDate(null);
       setSuccess(true);
-      onCreated();
+      onCreated(created.id);
     } catch (error) {
       // 3. Ошибки сервера раскладываем по полям
       const parsed = parseServerError(error);

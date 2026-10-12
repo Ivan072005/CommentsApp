@@ -1,4 +1,5 @@
 using CommentsApp.Api.GraphQL;
+using CommentsApp.Api.Hubs;
 using CommentsApp.Api.Middleware;
 using CommentsApp.Application.Behaviors;
 using CommentsApp.Application.Comments.Commands.CreateComment;
@@ -39,7 +40,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(config.GetConnectionString("DefaultConnection")));
 
-// ---------- Redis: хранилище кодов капчи (позже — кэш) ----------
+// ---------- Redis: коды капчи + кэш первой страницы комментариев ----------
 builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = config.GetConnectionString("Redis"));
 
@@ -59,10 +60,14 @@ var applicationAssembly = typeof(CreateCommentCommand).Assembly;
 
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssembly(applicationAssembly);
+    // Application — команды/запросы/обработчики событий; Api — обработчик рассылки через SignalR
+    cfg.RegisterServicesFromAssemblies(applicationAssembly, typeof(Program).Assembly);
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 builder.Services.AddValidatorsFromAssembly(applicationAssembly);
+
+// ---------- SignalR (WebSocket): мгновенная рассылка новых комментариев ----------
+builder.Services.AddSignalR();
 
 // ---------- GraphQL (HotChocolate) ----------
 builder.Services
@@ -115,5 +120,6 @@ app.UseAuthorization();
 // ---------- Эндпоинты ----------
 app.MapControllers(); // REST:    /api/...
 app.MapGraphQL();     // GraphQL: /graphql
+app.MapHub<CommentsHub>(CommentsHub.Route); // WebSocket: /hubs/comments
 
 app.Run();

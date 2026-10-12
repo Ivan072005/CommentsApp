@@ -1,0 +1,29 @@
+/* Плашка "Появились новые комментарии" (приходит по WebSocket) */
+.newBanner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #4f6bed;
+  border-radius: 6px;
+  background: rgba(79, 107, 237, 0.12);
+  font-size: 14px;
+  animation: slideIn 0.25s ease-out;
+}
+
+.newButton {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #4f6bed;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

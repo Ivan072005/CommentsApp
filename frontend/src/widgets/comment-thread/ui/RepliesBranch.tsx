@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { CommentCard, RepliesToggle, useReplies, type Comment } from '../../../entities/comment';
+import {
+  CommentCard,
+  RepliesToggle,
+  useCommentCreated,
+  useReplies,
+  type Comment,
+} from '../../../entities/comment';
 import { AddCommentForm } from '../../../features/add-comment';
 import styles from './RepliesBranch.module.css';
 
@@ -11,7 +17,13 @@ interface RepliesBranchProps {
 // Ветка ответов: грузит ответы на parentId и рисует их.
 // Каждый ответ может раскрыть СВОЮ ветку — компонент вызывает сам себя (рекурсия).
 export function RepliesBranch({ parentId, reloadKey = 0 }: RepliesBranchProps) {
-  const { replies, loading, error } = useReplies(parentId, reloadKey);
+  // Кто-то (в любой вкладке) ответил в эту ветку — перезагружаем её (WebSocket)
+  const [liveKey, setLiveKey] = useState(0);
+  useCommentCreated((comment) => {
+    if (comment.parentId === parentId) setLiveKey((k) => k + 1);
+  });
+
+  const { replies, loading, error } = useReplies(parentId, reloadKey + liveKey);
 
   if (loading) return <div className={styles.status}>Загрузка ответов…</div>;
   if (error) return <div className={styles.error}>{error}</div>;
@@ -28,14 +40,26 @@ export function RepliesBranch({ parentId, reloadKey = 0 }: RepliesBranchProps) {
 function ReplyItem({ comment }: { comment: Comment }) {
   const [open, setOpen] = useState(false);         // раскрыты ли ответы на этот комментарий
   const [replying, setReplying] = useState(false); // открыта ли форма ответа
-  const [added, setAdded] = useState(0);           // сколько ответов добавили прямо сейчас
 
-  const repliesCount = comment.repliesCount + added;
+  // id новых ответов на этот комментарий, появившихся после загрузки (свои + чужие по WebSocket).
+  // Set — чтобы свой ответ, пришедший ещё и по WebSocket, не посчитать дважды.
+  const [newReplyIds, setNewReplyIds] = useState<Set<number>>(() => new Set());
+  const [initialCount] = useState(comment.repliesCount);
 
-  const handleCreated = () => {
+  const addReply = (id: number) =>
+    setNewReplyIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+
+  useCommentCreated((created) => {
+    if (created.parentId === comment.id) addReply(created.id);
+  });
+
+  // Если ветка-родитель перезагрузилась, сервер уже учёл новые ответы — берём большее
+  const repliesCount = Math.max(comment.repliesCount, initialCount + newReplyIds.size);
+
+  const handleCreated = (id: number) => {
     setReplying(false);
-    setAdded((n) => n + 1); // счётчик +1 и перезагрузка ветки (reloadKey)
-    setOpen(true);          // сразу показываем ветку с новым ответом
+    addReply(id);  // счётчик +1 сразу, не дожидаясь WebSocket
+    setOpen(true); // и показываем ветку с новым ответом
   };
 
   return (
@@ -63,7 +87,7 @@ function ReplyItem({ comment }: { comment: Comment }) {
             </div>
           )}
 
-          {open && <RepliesBranch parentId={comment.id} reloadKey={added} />}
+          {open && <RepliesBranch parentId={comment.id} reloadKey={newReplyIds.size} />}
         </>
       }
     />
