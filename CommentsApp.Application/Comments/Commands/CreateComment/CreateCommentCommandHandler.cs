@@ -1,4 +1,5 @@
-﻿using CommentsApp.Domain.Entities;
+﻿using CommentsApp.Application.Comments.Events;
+using CommentsApp.Domain.Entities;
 using CommentsApp.Domain.Interfaces;
 using CommentsApp.Infrastructure.Persistence;
 using FluentValidation;
@@ -15,19 +16,22 @@ public class CreateCommentCommandHandler : IRequestHandler<CreateCommentCommand,
     private readonly IFileStorageService _fileStorage;
     private readonly ICaptchaService _captcha;
     private readonly IImageResizeQueue _imageResizeQueue;
+    private readonly IPublisher _publisher;
 
     public CreateCommentCommandHandler(
         AppDbContext db,
         ICommentSanitizer sanitizer,
         IFileStorageService fileStorage,
         ICaptchaService captcha,
-        IImageResizeQueue imageResizeQueue)
+        IImageResizeQueue imageResizeQueue,
+        IPublisher publisher)
     {
         _db = db;
         _sanitizer = sanitizer;
         _fileStorage = fileStorage;
         _captcha = captcha;
         _imageResizeQueue = imageResizeQueue;
+        _publisher = publisher;
     }
 
     public async Task<int> Handle(CreateCommentCommand request, CancellationToken cancellationToken)
@@ -135,6 +139,10 @@ public class CreateCommentCommandHandler : IRequestHandler<CreateCommentCommand,
                 await _db.SaveChangesAsync(cancellationToken);
             }
         }
+
+        // 8. Событие "комментарий создан" -> сброс кэша + рассылка всем через SignalR.
+        //    CancellationToken.None: рассылку доводим до конца, даже если автор уже закрыл вкладку.
+        await _publisher.Publish(new CommentCreatedEvent(comment.Id, comment.ParentId), CancellationToken.None);
 
         return comment.Id;
     }
