@@ -1,5 +1,5 @@
 import { Fragment, useState, type ReactNode } from 'react';
-import { RepliesToggle, type Comment, type SortBy } from '../../../entities/comment';
+import { AttachmentList, RepliesToggle, type Comment, type SortBy } from '../../../entities/comment';
 import { AddCommentForm } from '../../../features/add-comment';
 import { formatDate } from '../../../shared/lib/formatDate';
 import { isSafeUrl } from '../../../shared/lib/isSafeUrl';
@@ -83,8 +83,11 @@ export function CommentsTable({
               </td>
               <td>{c.email}</td>
               <td className={styles.nowrap}>{formatDate(c.createdAt)}</td>
-              {/* Текст уже очищен сервером по белому списку тегов */}
-              <td className={styles.text} dangerouslySetInnerHTML={{ __html: c.text }} />
+              <td>
+                {/* Текст уже очищен сервером по белому списку тегов */}
+                <div className={styles.text} dangerouslySetInnerHTML={{ __html: c.text }} />
+                <AttachmentList attachments={c.attachments} />
+              </td>
               <td className={styles.nowrap}>
                 <div className={styles.actions}>
                   <button

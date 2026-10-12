@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { Comment } from '../model/types';
 import { formatDate } from '../../../shared/lib/formatDate';
 import { isSafeUrl } from '../../../shared/lib/isSafeUrl';
-import { fileUrl } from '../../../shared/api/http';
+import { AttachmentList } from './AttachmentList';
 import styles from './CommentCard.module.css';
 
 interface CommentCardProps {
@@ -30,19 +30,7 @@ export function CommentCard({ comment, footer }: CommentCardProps) {
       {/* Текст уже очищен сервером по белому списку тегов */}
       <div className={styles.text} dangerouslySetInnerHTML={{ __html: comment.text }} />
 
-      {comment.attachments.length > 0 && (
-        <div className={styles.attachments}>
-          {comment.attachments.map((a) =>
-            a.kind === 'image' ? (
-              <img key={a.id} src={fileUrl(a.url)} alt={a.fileName} className={styles.thumb} />
-            ) : (
-              <a key={a.id} href={fileUrl(a.url)} target="_blank" rel="noopener noreferrer">
-                TXT: {a.fileName}
-              </a>
-            ),
-          )}
-        </div>
-      )}
+      <AttachmentList attachments={comment.attachments} />
 
       {footer}
     </div>
