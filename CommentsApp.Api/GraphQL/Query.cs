@@ -1,4 +1,5 @@
-﻿using CommentsApp.Application.Comments.Queries.GetComments;
+﻿using CommentsApp.Application.Comments.Queries.GetCommentReplies;
+using CommentsApp.Application.Comments.Queries.GetComments;
 using HotChocolate;
 using MediatR;
 
@@ -17,4 +18,11 @@ public class Query
         bool descending = true,
         CancellationToken cancellationToken = default)
         => mediator.Send(new GetCommentsQuery(page, pageSize, sortBy, descending), cancellationToken);
+
+    // Прямые ответы на комментарий — фронт раскрывает дерево по одному уровню
+    public Task<List<CommentDto>> GetReplies(
+        [Service] IMediator mediator,
+        int parentId,
+        CancellationToken cancellationToken = default)
+        => mediator.Send(new GetCommentRepliesQuery(parentId), cancellationToken);
 }

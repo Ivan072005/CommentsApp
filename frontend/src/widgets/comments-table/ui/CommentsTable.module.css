@@ -1,0 +1,66 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid #3a3a42;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  background: #26262c;
+}
+
+.sortButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: #7aa2ff;
+}
+
+.nowrap { white-space: nowrap; }
+.center { text-align: center; }
+.text   { word-break: break-word; white-space: pre-wrap; } /* сохраняем переносы строк */
+.empty  { text-align: center; color: #888; }
+.muted  { color: #888; }
+
+/* Раскрытая ветка ответов под строкой */
+.expandedRow td {
+  background: #222228;
+}
+
+/* "Ответить" + "Показать ответы" друг под другом */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7aa2ff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.replyTitle {
+  margin-bottom: 6px;
+  color: #9a9aa5;
+  font-size: 13px;
+}
