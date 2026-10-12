@@ -1,0 +1,35 @@
+.nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding-top: 16px;
+}
+
+.button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page {
+  color: var(--text-muted);
+  font-size: 14px;
+}

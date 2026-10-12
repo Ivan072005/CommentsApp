@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Attachment } from '../model/types';
 import { fileUrl } from '../../../shared/api/http';
 import { Lightbox } from '../../../shared/ui/Lightbox';
+import { FileIcon } from '../../../shared/ui/icons';
 import styles from './AttachmentList.module.css';
 
 const formatSize = (bytes: number) =>
@@ -23,7 +24,7 @@ export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
             </button>
           ) : (
             <button key={a.id} type="button" className={styles.fileButton} onClick={() => setActive(a)}>
-              TXT: {a.fileName} ({formatSize(a.sizeBytes)})
+              <FileIcon /> {a.fileName} <span className={styles.size}>{formatSize(a.sizeBytes)}</span>
             </button>
           ),
         )}

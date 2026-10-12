@@ -12,10 +12,12 @@ import {
   type FieldName,
   type FormValues,
 } from '../model/validation';
+import { CheckIcon, FileIcon, RefreshIcon } from '../../../shared/ui/icons';
 import { TagToolbar } from './TagToolbar';
 import styles from './AddCommentForm.module.css';
 
 interface AddCommentFormProps {
+  title?: string;           // заголовок над формой
   parentId?: number;        // если задан — это ответ на комментарий
   onCreated: (commentId: number) => void; // вызвать после успешной отправки (обновить список)
   onCancel?: () => void;    // кнопка "Отмена" (для формы ответа)
@@ -32,7 +34,7 @@ const emptyValues = (): FormValues => {
   };
 };
 
-export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentFormProps) {
+export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddCommentFormProps) {
   const [values, setValues] = useState<FormValues>(emptyValues);
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -117,6 +119,8 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      {title && <h3 className={styles.title}>{title}</h3>}
+
       <div className={styles.row}>
         <Field label="User Name" required error={errors.userName}>
           <input
@@ -193,12 +197,18 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
 
       <Field label="Файл" error={errors.file} hint="JPG, GIF, PNG (уменьшится до 320×240) или TXT до 100 КБ">
         <div className={styles.fileRow}>
+          {/* Стандартный input спрятан — вместо него своя кнопка в стиле формы */}
           <input
             ref={fileInputRef}
             type="file"
             accept=".jpg,.jpeg,.png,.gif,.txt"
+            className={styles.hiddenInput}
             onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
           />
+          <button type="button" className={styles.fileButton} onClick={() => fileInputRef.current?.click()}>
+            <FileIcon /> Выбрать файл
+          </button>
+          <span className={file ? styles.fileName : styles.hint}>{file ? file.name : 'Файл не выбран'}</span>
           {file && (
             <button type="button" className={styles.linkButton} onClick={clearFile}>
               Убрать файл
@@ -214,8 +224,8 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
           ) : (
             <span className={styles.hint}>Загрузка…</span>
           )}
-          <button type="button" className={styles.linkButton} onClick={refreshCaptcha}>
-            Обновить
+          <button type="button" className={styles.iconButton} onClick={refreshCaptcha} title="Другая картинка">
+            <RefreshIcon size={16} />
           </button>
           <input
             className={inputClass('captchaCode')}
@@ -229,7 +239,11 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
       </Field>
 
       {generalError && <p className={styles.error}>{generalError}</p>}
-      {success && <p className={styles.success}>Комментарий добавлен</p>}
+      {success && (
+        <p className={styles.success}>
+          <CheckIcon /> Комментарий добавлен
+        </p>
+      )}
 
       <div className={styles.actions}>
         <button type="submit" className={styles.button} disabled={submitting}>

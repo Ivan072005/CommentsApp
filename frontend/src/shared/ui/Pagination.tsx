@@ -1,3 +1,6 @@
+import { ArrowLeftIcon, ArrowRightIcon } from './icons';
+import styles from './Pagination.module.css';
+
 interface PaginationProps {
   page: number;
   hasNext: boolean;
@@ -5,14 +8,17 @@ interface PaginationProps {
 }
 
 export function Pagination({ page, hasNext, onChange }: PaginationProps) {
+  // одна страница и следующей нет — пагинация не нужна
+  if (page === 1 && !hasNext) return null;
+
   return (
-    <nav style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', marginTop: 16 }}>
-      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-        ← Назад
+    <nav className={styles.nav} aria-label="Страницы">
+      <button type="button" className={styles.button} disabled={page <= 1} onClick={() => onChange(page - 1)}>
+        <ArrowLeftIcon /> Назад
       </button>
-      <span>Страница {page}</span>
-      <button type="button" disabled={!hasNext} onClick={() => onChange(page + 1)}>
-        Вперёд →
+      <span className={styles.page}>Страница {page}</span>
+      <button type="button" className={styles.button} disabled={!hasNext} onClick={() => onChange(page + 1)}>
+        Вперёд <ArrowRightIcon />
       </button>
     </nav>
   );
