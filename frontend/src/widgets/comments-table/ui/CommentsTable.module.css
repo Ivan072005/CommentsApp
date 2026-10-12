@@ -1,0 +1,36 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid #3a3a42;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  background: #26262c;
+}
+
+.sortButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: #7aa2ff;
+}
+
+.nowrap { white-space: nowrap; }
+.center { text-align: center; }
+.text   { word-break: break-word; }
+.empty  { text-align: center; color: #888; }

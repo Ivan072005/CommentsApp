@@ -1,37 +1,42 @@
-import { useEffect, useState } from 'react';
-import { getComments, type Comment } from '../../../entities/comment';
+import { useState } from 'react';
+import { useTopComments, type SortBy } from '../../../entities/comment';
+import { CommentsTable } from '../../../widgets/comments-table';
+import { Pagination } from '../../../shared/ui/Pagination';
 
 export function CommentsPage() {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SortBy>('date');
+  const [descending, setDescending] = useState(true); // LIFO: новые сверху
 
-  useEffect(() => {
-    let cancelled = false; // защита: не обновлять state, если компонент уже ушёл
+  const { comments, loading, error, hasNext } = useTopComments(page, sortBy, descending);
 
-    getComments({ page: 1, pageSize: 25, sortBy: 'date', descending: true })
-      .then((data) => { if (!cancelled) setComments(data); })
-      .catch(() => { if (!cancelled) setError('Не удалось загрузить комментарии'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading) return <p>Загрузка…</p>;
-  if (error) return <p style={{ color: 'crimson' }}>{error}</p>;
+  // Клик по той же колонке — меняем направление; по новой — сортируем по ней
+  const handleSort = (field: SortBy) => {
+    if (field === sortBy) {
+      setDescending((d) => !d);
+    } else {
+      setSortBy(field);
+      setDescending(field === 'date'); // дата: новые сверху; имя/email: А→Я
+    }
+    setPage(1);
+  };
 
   return (
-    <main style={{ maxWidth: 800, margin: '0 auto', padding: 16 }}>
+    <main style={{ maxWidth: 1100, margin: '0 auto', padding: 16 }}>
       <h1>Комментарии</h1>
-      {comments.map((c) => (
-        <article key={c.id} style={{ borderBottom: '1px solid #444', padding: '8px 0' }}>
-          <b>{c.userName}</b>{' '}
-          <small>{new Date(c.createdAt).toLocaleString()}</small>
-          {/* Текст уже очищен сервером по белому списку тегов */}
-          <div dangerouslySetInnerHTML={{ __html: c.text }} />
-          {c.repliesCount > 0 && <small>Ответов: {c.repliesCount}</small>}
-        </article>
-      ))}
+
+      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+
+      <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+        <CommentsTable
+          comments={comments}
+          sortBy={sortBy}
+          descending={descending}
+          onSort={handleSort}
+        />
+      </div>
+
+      <Pagination page={page} hasNext={hasNext} onChange={setPage} />
     </main>
   );
 }
