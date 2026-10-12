@@ -115,3 +115,44 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+/* Панель тегов + кнопка предпросмотра над полем текста */
+.editorBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+.toolButton {
+  padding: 4px 10px;
+  border: 1px solid #3a3a42;
+  border-radius: 4px;
+  background: #1b1b1f;
+  color: inherit;
+  font-family: monospace;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toolButton:hover {
+  border-color: #7aa2ff;
+  color: #7aa2ff;
+}
+
+.preview {
+  padding: 8px 12px;
+  border: 1px dashed #4f6bed;
+  border-radius: 6px;
+}
+
+.previewTitle {
+  color: #9a9aa5;
+  font-size: 12px;
+}

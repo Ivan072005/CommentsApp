@@ -1,7 +1,9 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useCaptcha } from '../../../entities/captcha';
+import { CommentCard } from '../../../entities/comment';
 import { createComment } from '../api/createComment';
 import { loadAuthor, saveAuthor } from '../model/authorStorage';
+import { sanitizeForPreview } from '../model/htmlTags';
 import {
   parseServerError,
   validate,
@@ -10,6 +12,7 @@ import {
   type FieldName,
   type FormValues,
 } from '../model/validation';
+import { TagToolbar } from './TagToolbar';
 import styles from './AddCommentForm.module.css';
 
 interface AddCommentFormProps {
@@ -37,6 +40,8 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [previewDate, setPreviewDate] = useState<string | null>(null); // null = предпросмотр скрыт
   const { captcha, error: captchaError, refresh: refreshCaptcha } = useCaptcha();
 
   const setField = (name: keyof FormValues, value: string) => {
@@ -55,6 +60,9 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
     setErrors((e) => ({ ...e, file: undefined }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const togglePreview = () =>
+    setPreviewDate((d) => (d ? null : new Date().toISOString()));
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -89,6 +97,7 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
       saveAuthor({ userName: values.userName.trim(), email: values.email.trim(), homePage: values.homePage.trim() });
       setValues((v) => ({ ...v, text: '', captchaCode: '' }));
       clearFile();
+      setPreviewDate(null);
       setSuccess(true);
       onCreated();
     } catch (error) {
@@ -146,15 +155,41 @@ export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentForm
         label="Текст"
         required
         error={errors.text}
-        hint="Разрешены теги: <a href=&quot;&quot; title=&quot;&quot;>, <code>, <i>, <strong>"
+        hint="Разрешены теги: <a href=&quot;&quot; title=&quot;&quot;>, <code>, <i>, <strong>. Выдели текст и нажми кнопку тега."
       >
+        <div className={styles.editorBar}>
+          <TagToolbar textareaRef={textareaRef} onChange={(value) => setField('text', value)} />
+          <button type="button" className={styles.linkButton} onClick={togglePreview}>
+            {previewDate ? 'Скрыть предпросмотр' : 'Предпросмотр'}
+          </button>
+        </div>
         <textarea
+          ref={textareaRef}
           className={inputClass('text', styles.textarea)}
           rows={5}
           value={values.text}
           onChange={(e) => setField('text', e.target.value)}
         />
       </Field>
+
+      {previewDate && (
+        <div className={styles.preview}>
+          <div className={styles.previewTitle}>Предпросмотр (так комментарий будет выглядеть)</div>
+          <CommentCard
+            comment={{
+              id: 0,
+              parentId: parentId ?? null,
+              userName: values.userName.trim() || 'Аноним',
+              email: values.email.trim(),
+              homePage: values.homePage.trim() || null,
+              text: sanitizeForPreview(values.text),
+              createdAt: previewDate,
+              repliesCount: 0,
+              attachments: [],
+            }}
+          />
+        </div>
+      )}
 
       <Field label="Файл" error={errors.file} hint="JPG, GIF, PNG (уменьшится до 320×240) или TXT до 100 КБ">
         <div className={styles.fileRow}>

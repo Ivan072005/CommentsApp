@@ -1,4 +1,5 @@
 import { ApiError } from '../../../shared/api/http';
+import { checkTags } from './htmlTags';
 
 export interface FormValues {
   userName: string;
@@ -11,33 +12,8 @@ export interface FormValues {
 export type FieldName = keyof FormValues | 'file';
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
-const ALLOWED_TAGS = ['a', 'code', 'i', 'strong'];
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif'];
 const MAX_TXT_BYTES = 100 * 1024;
-
-// Тот же регэксп тегов, что и на сервере (CommentSanitizer)
-const TAG_REGEX = /<\/?([a-zA-Z0-9]+)((?:\s+[a-zA-Z0-9-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'))?)*)\s*\/?>/g;
-
-// Проверка "валидного XHTML": каждый разрешённый тег открыт и закрыт в правильном порядке
-export function checkTags(text: string): string | null {
-  const stack: string[] = [];
-
-  for (const match of text.matchAll(TAG_REGEX)) {
-    const name = match[1].toLowerCase();
-    const full = match[0];
-
-    if (!ALLOWED_TAGS.includes(name) || full.endsWith('/>')) continue;
-
-    if (full.startsWith('</')) {
-      if (stack.at(-1) !== name) return `Тег <${name}> закрыт некорректно или без открытия`;
-      stack.pop();
-    } else {
-      stack.push(name);
-    }
-  }
-
-  return stack.length > 0 ? `Не закрыт тег: <${stack.at(-1)}>` : null;
-}
 
 const isHttpUrl = (value: string) => {
   try {

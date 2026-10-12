@@ -18,6 +18,7 @@
 .text {
   margin: 6px 0;
   word-break: break-word;
+  white-space: pre-wrap; /* сохраняем переносы строк */
 }
 
 .attachments {
