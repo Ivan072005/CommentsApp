@@ -40,3 +40,27 @@
 .expandedRow td {
   background: #222228;
 }
+
+/* "Ответить" + "Показать ответы" друг под другом */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7aa2ff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.replyTitle {
+  margin-bottom: 6px;
+  color: #9a9aa5;
+  font-size: 13px;
+}

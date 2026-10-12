@@ -45,7 +45,8 @@ export function CommentsPage() {
           sortBy={sortBy}
           descending={descending}
           onSort={handleSort}
-          renderReplies={(c) => <RepliesBranch parentId={c.id} />}
+          renderReplies={(c, branchReloadKey) => <RepliesBranch parentId={c.id} reloadKey={branchReloadKey} />}
+          onReplyCreated={() => setReloadKey((k) => k + 1)}
         />
       </div>
 

@@ -13,3 +13,30 @@
 
 .status { color: #9a9aa5; }
 .error  { color: crimson; }
+
+/* "Ответить" + "Показать ответы" в одну строку */
+.actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7aa2ff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.replyForm {
+  margin-top: 8px;
+}
+
+.replyTitle {
+  margin-bottom: 6px;
+  color: #9a9aa5;
+  font-size: 13px;
+}

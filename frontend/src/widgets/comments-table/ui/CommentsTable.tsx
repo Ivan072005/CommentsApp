@@ -1,5 +1,6 @@
 import { Fragment, useState, type ReactNode } from 'react';
 import { RepliesToggle, type Comment, type SortBy } from '../../../entities/comment';
+import { AddCommentForm } from '../../../features/add-comment';
 import { formatDate } from '../../../shared/lib/formatDate';
 import { isSafeUrl } from '../../../shared/lib/isSafeUrl';
 import styles from './CommentsTable.module.css';
@@ -9,7 +10,9 @@ interface CommentsTableProps {
   sortBy: SortBy;
   descending: boolean;
   onSort: (field: SortBy) => void;
-  renderReplies: (comment: Comment) => ReactNode; // что показать под раскрытой строкой
+  // что показать под раскрытой строкой; reloadKey растёт после нового ответа
+  renderReplies: (comment: Comment, reloadKey: number) => ReactNode;
+  onReplyCreated: () => void; // обновить список (чтобы пересчитался счётчик ответов)
 }
 
 const SORTABLE_COLUMNS: { field: SortBy; title: string }[] = [
@@ -18,8 +21,17 @@ const SORTABLE_COLUMNS: { field: SortBy; title: string }[] = [
   { field: 'date', title: 'Дата' },
 ];
 
-export function CommentsTable({ comments, sortBy, descending, onSort, renderReplies }: CommentsTableProps) {
+export function CommentsTable({
+  comments,
+  sortBy,
+  descending,
+  onSort,
+  renderReplies,
+  onReplyCreated,
+}: CommentsTableProps) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [replyTo, setReplyTo] = useState<number | null>(null);          // под какой строкой открыта форма
+  const [branchVersions, setBranchVersions] = useState<Record<number, number>>({});
 
   const toggle = (id: number) =>
     setExpanded((prev) => {
@@ -28,6 +40,13 @@ export function CommentsTable({ comments, sortBy, descending, onSort, renderRepl
       else next.add(id);
       return next;
     });
+
+  const handleReplyCreated = (id: number) => {
+    setReplyTo(null);
+    setExpanded((prev) => new Set(prev).add(id));                          // раскрываем ветку
+    setBranchVersions((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));          // и перезагружаем её
+    onReplyCreated();
+  };
 
   return (
     <table className={styles.table}>
@@ -67,17 +86,37 @@ export function CommentsTable({ comments, sortBy, descending, onSort, renderRepl
               {/* Текст уже очищен сервером по белому списку тегов */}
               <td className={styles.text} dangerouslySetInnerHTML={{ __html: c.text }} />
               <td className={styles.nowrap}>
-                {c.repliesCount > 0 ? (
-                  <RepliesToggle count={c.repliesCount} open={expanded.has(c.id)} onToggle={() => toggle(c.id)} />
-                ) : (
-                  <span className={styles.muted}>—</span>
-                )}
+                <div className={styles.actions}>
+                  <button
+                    type="button"
+                    className={styles.linkButton}
+                    onClick={() => setReplyTo((current) => (current === c.id ? null : c.id))}
+                  >
+                    {replyTo === c.id ? 'Отменить ответ' : 'Ответить'}
+                  </button>
+                  {c.repliesCount > 0 && (
+                    <RepliesToggle count={c.repliesCount} open={expanded.has(c.id)} onToggle={() => toggle(c.id)} />
+                  )}
+                </div>
               </td>
             </tr>
 
+            {replyTo === c.id && (
+              <tr className={styles.expandedRow}>
+                <td colSpan={5}>
+                  <div className={styles.replyTitle}>Ответ для {c.userName}</div>
+                  <AddCommentForm
+                    parentId={c.id}
+                    onCreated={() => handleReplyCreated(c.id)}
+                    onCancel={() => setReplyTo(null)}
+                  />
+                </td>
+              </tr>
+            )}
+
             {expanded.has(c.id) && (
               <tr className={styles.expandedRow}>
-                <td colSpan={5}>{renderReplies(c)}</td>
+                <td colSpan={5}>{renderReplies(c, branchVersions[c.id] ?? 0)}</td>
               </tr>
             )}
           </Fragment>

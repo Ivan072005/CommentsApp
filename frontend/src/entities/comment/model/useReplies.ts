@@ -3,13 +3,15 @@ import { getReplies } from '../api/commentApi';
 import type { Comment } from './types';
 
 interface LoadedState {
-  parentId: number;
+  key: string;
   items: Comment[];
   error: string | null;
 }
 
-// Загружает прямые ответы на комментарий parentId
-export function useReplies(parentId: number) {
+// Загружает прямые ответы на комментарий parentId.
+// reloadKey: увеличь его, чтобы перезагрузить ветку (например, после нового ответа).
+export function useReplies(parentId: number, reloadKey = 0) {
+  const key = `${parentId}|${reloadKey}`;
   const [state, setState] = useState<LoadedState | null>(null);
 
   useEffect(() => {
@@ -17,20 +19,21 @@ export function useReplies(parentId: number) {
 
     getReplies(parentId)
       .then((items) => {
-        if (!cancelled) setState({ parentId, items, error: null });
+        if (!cancelled) setState({ key, items, error: null });
       })
       .catch(() => {
-        if (!cancelled) setState({ parentId, items: [], error: 'Не удалось загрузить ответы' });
+        if (!cancelled) setState({ key, items: [], error: 'Не удалось загрузить ответы' });
       });
 
     return () => { cancelled = true; };
-  }, [parentId]);
+  }, [key, parentId]);
 
-  const current = state?.parentId === parentId ? state : null;
+  const current = state?.key === key ? state : null;
 
   return {
-    replies: current?.items ?? [],
-    loading: current === null,
+    // пока перезагружается — показываем прежние ответы, чтобы ветка не "мигала"
+    replies: current?.items ?? state?.items ?? [],
+    loading: state === null,
     error: current?.error ?? null,
   };
 }
