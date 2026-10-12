@@ -1,0 +1,233 @@
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCaptcha } from '../../../entities/captcha';
+import { createComment } from '../api/createComment';
+import { loadAuthor, saveAuthor } from '../model/authorStorage';
+import {
+  parseServerError,
+  validate,
+  validateFile,
+  type FieldErrors,
+  type FieldName,
+  type FormValues,
+} from '../model/validation';
+import styles from './AddCommentForm.module.css';
+
+interface AddCommentFormProps {
+  parentId?: number;        // если задан — это ответ на комментарий
+  onCreated: () => void;    // вызвать после успешной отправки (обновить список)
+  onCancel?: () => void;    // кнопка "Отмена" (для формы ответа)
+}
+
+const emptyValues = (): FormValues => {
+  const author = loadAuthor();
+  return {
+    userName: author?.userName ?? '',
+    email: author?.email ?? '',
+    homePage: author?.homePage ?? '',
+    text: '',
+    captchaCode: '',
+  };
+};
+
+export function AddCommentForm({ parentId, onCreated, onCancel }: AddCommentFormProps) {
+  const [values, setValues] = useState<FormValues>(emptyValues);
+  const [file, setFile] = useState<File | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { captcha, error: captchaError, refresh: refreshCaptcha } = useCaptcha();
+
+  const setField = (name: keyof FormValues, value: string) => {
+    setValues((v) => ({ ...v, [name]: value }));
+    setErrors((e) => ({ ...e, [name]: undefined })); // ошибка поля пропадает, как только начали исправлять
+    setSuccess(false);
+  };
+
+  const handleFileChange = (selected: File | null) => {
+    setFile(selected);
+    setErrors((e) => ({ ...e, file: validateFile(selected) ?? undefined }));
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    setErrors((e) => ({ ...e, file: undefined }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setGeneralError(null);
+    setSuccess(false);
+
+    // 1. Клиентская валидация — не отправляем заведомо неверные данные
+    const clientErrors = validate(values, file);
+    setErrors(clientErrors);
+    if (Object.keys(clientErrors).length > 0) return;
+
+    if (!captcha) {
+      setGeneralError('Капча ещё не загрузилась');
+      return;
+    }
+
+    // 2. Собираем multipart/form-data (имена полей — как в CreateCommentRequest на сервере)
+    const formData = new FormData();
+    formData.append('UserName', values.userName.trim());
+    formData.append('Email', values.email.trim());
+    if (values.homePage.trim()) formData.append('HomePage', values.homePage.trim());
+    formData.append('Text', values.text);
+    if (parentId !== undefined) formData.append('ParentId', String(parentId));
+    formData.append('CaptchaId', captcha.id);
+    formData.append('CaptchaCode', values.captchaCode.trim());
+    if (file) formData.append('File', file);
+
+    setSubmitting(true);
+    try {
+      await createComment(formData);
+
+      saveAuthor({ userName: values.userName.trim(), email: values.email.trim(), homePage: values.homePage.trim() });
+      setValues((v) => ({ ...v, text: '', captchaCode: '' }));
+      clearFile();
+      setSuccess(true);
+      onCreated();
+    } catch (error) {
+      // 3. Ошибки сервера раскладываем по полям
+      const parsed = parseServerError(error);
+      setErrors(parsed.fields);
+      setGeneralError(parsed.general);
+      setValues((v) => ({ ...v, captchaCode: '' }));
+    } finally {
+      setSubmitting(false);
+      refreshCaptcha(); // капча одноразовая — после любой отправки берём новую
+    }
+  };
+
+  const inputClass = (name: FieldName, base = styles.input) =>
+    errors[name] ? `${base} ${styles.invalid}` : base;
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <div className={styles.row}>
+        <Field label="User Name" required error={errors.userName}>
+          <input
+            className={inputClass('userName')}
+            value={values.userName}
+            onChange={(e) => setField('userName', e.target.value)}
+            autoComplete="username"
+            maxLength={50}
+          />
+        </Field>
+
+        <Field label="E-mail" required error={errors.email}>
+          <input
+            className={inputClass('email')}
+            type="email"
+            value={values.email}
+            onChange={(e) => setField('email', e.target.value)}
+            autoComplete="email"
+            maxLength={255}
+          />
+        </Field>
+
+        <Field label="Home page" error={errors.homePage}>
+          <input
+            className={inputClass('homePage')}
+            type="url"
+            placeholder="https://..."
+            value={values.homePage}
+            onChange={(e) => setField('homePage', e.target.value)}
+            autoComplete="url"
+          />
+        </Field>
+      </div>
+
+      <Field
+        label="Текст"
+        required
+        error={errors.text}
+        hint="Разрешены теги: <a href=&quot;&quot; title=&quot;&quot;>, <code>, <i>, <strong>"
+      >
+        <textarea
+          className={inputClass('text', styles.textarea)}
+          rows={5}
+          value={values.text}
+          onChange={(e) => setField('text', e.target.value)}
+        />
+      </Field>
+
+      <Field label="Файл" error={errors.file} hint="JPG, GIF, PNG (уменьшится до 320×240) или TXT до 100 КБ">
+        <div className={styles.fileRow}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.gif,.txt"
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+          />
+          {file && (
+            <button type="button" className={styles.linkButton} onClick={clearFile}>
+              Убрать файл
+            </button>
+          )}
+        </div>
+      </Field>
+
+      <Field label="Код с картинки" required error={errors.captchaCode ?? captchaError ?? undefined}>
+        <div className={styles.captcha}>
+          {captcha ? (
+            <img className={styles.captchaImage} src={captcha.imageDataUri} alt="CAPTCHA" />
+          ) : (
+            <span className={styles.hint}>Загрузка…</span>
+          )}
+          <button type="button" className={styles.linkButton} onClick={refreshCaptcha}>
+            Обновить
+          </button>
+          <input
+            className={inputClass('captchaCode')}
+            value={values.captchaCode}
+            onChange={(e) => setField('captchaCode', e.target.value)}
+            autoComplete="off"
+            maxLength={10}
+            style={{ width: 140 }}
+          />
+        </div>
+      </Field>
+
+      {generalError && <p className={styles.error}>{generalError}</p>}
+      {success && <p className={styles.success}>Комментарий добавлен</p>}
+
+      <div className={styles.actions}>
+        <button type="submit" className={styles.button} disabled={submitting}>
+          {submitting ? 'Отправка…' : parentId !== undefined ? 'Ответить' : 'Отправить'}
+        </button>
+        {onCancel && (
+          <button type="button" className={styles.linkButton} onClick={onCancel}>
+            Отмена
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
+interface FieldProps {
+  label: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  children: ReactNode;
+}
+
+function Field({ label, required, error, hint, children }: FieldProps) {
+  return (
+    <label className={styles.field}>
+      <span>
+        {label}
+        {required && <span className={styles.required}> *</span>}
+      </span>
+      {children}
+      {hint && !error && <span className={styles.hint}>{hint}</span>}
+      {error && <span className={styles.error}>{error}</span>}
+    </label>
+  );
+}

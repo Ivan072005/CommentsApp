@@ -11,9 +11,10 @@ interface LoadedState {
 }
 
 // Загружает заглавные комментарии для страницы/сортировки.
+// reloadKey: увеличь его, чтобы перезагрузить список (например, после добавления комментария).
 // Пока грузится новое — отдаёт старые данные (без мигания таблицы).
-export function useTopComments(page: number, sortBy: SortBy, descending: boolean) {
-  const key = `${page}|${sortBy}|${descending}`;
+export function useTopComments(page: number, sortBy: SortBy, descending: boolean, reloadKey = 0) {
+  const key = `${page}|${sortBy}|${descending}|${reloadKey}`;
   const [state, setState] = useState<LoadedState | null>(null);
 
   useEffect(() => {

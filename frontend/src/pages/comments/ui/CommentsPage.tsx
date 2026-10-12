@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTopComments, type SortBy } from '../../../entities/comment';
+import { AddCommentForm } from '../../../features/add-comment';
 import { CommentsTable } from '../../../widgets/comments-table';
 import { RepliesBranch } from '../../../widgets/comment-thread';
 import { Pagination } from '../../../shared/ui/Pagination';
@@ -8,8 +9,9 @@ export function CommentsPage() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [descending, setDescending] = useState(true); // LIFO: новые сверху
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const { comments, loading, error, hasNext } = useTopComments(page, sortBy, descending);
+  const { comments, loading, error, hasNext } = useTopComments(page, sortBy, descending, reloadKey);
 
   // Клик по той же колонке — меняем направление; по новой — сортируем по ней
   const handleSort = (field: SortBy) => {
@@ -22,9 +24,18 @@ export function CommentsPage() {
     setPage(1);
   };
 
+  // После нового комментария показываем первую страницу и перезагружаем список
+  const handleCreated = () => {
+    setPage(1);
+    setReloadKey((k) => k + 1);
+  };
+
   return (
     <main style={{ maxWidth: 1100, margin: '0 auto', padding: 16 }}>
       <h1>Комментарии</h1>
+
+      <h2 style={{ fontSize: 18 }}>Оставить комментарий</h2>
+      <AddCommentForm onCreated={handleCreated} />
 
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
 
