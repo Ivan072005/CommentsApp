@@ -91,7 +91,11 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // /scalar
 }
 
-app.UseHttpsRedirection();
+// HTTPS-редирект — только при локальном запуске.
+// В Docker API работает за nginx по HTTP (HTTPS снимает внешний прокси/хостинг),
+// а реальный IP пользователя приходит в X-Forwarded-For (ASPNETCORE_FORWARDEDHEADERS_ENABLED).
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseCors("Frontend");
 
 // ---------- Загруженные файлы: /uploads/<stored_path> ----------
