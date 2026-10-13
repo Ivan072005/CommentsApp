@@ -19,6 +19,7 @@
 }
 
 .table th {
+  white-space: nowrap; /* "USER NAME" не переносится на две строки */
   color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
