@@ -14,6 +14,7 @@ public record AttachmentDto(
 
 public record CommentDto(
     int Id,
+    int? ParentId,
     string UserName,
     string Email,
     string? HomePage,
@@ -29,6 +30,7 @@ public static class CommentProjections
     // Это Expression, поэтому EF переводит его в SQL и берёт из БД только нужные поля.
     public static readonly Expression<Func<Comment, CommentDto>> ToDto = c => new CommentDto(
         c.Id,
+        c.ParentId,
         c.User.UserName,
         c.User.Email,
         c.User.HomePage,

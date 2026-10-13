@@ -1,4 +1,6 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
 using CommentsApp.Domain.Interfaces;
 
 namespace CommentsApp.Infrastructure.Services;
@@ -74,30 +76,47 @@ public class CommentSanitizer : ICommentSanitizer
 
     private string SanitizeAllowedTags(string text)
     {
-        return TagRegex.Replace(text, match =>
+        // Идём по тексту: обычный текст МЕЖДУ тегами всегда экранируем,
+        // а каждый найденный тег обрабатываем отдельно (разрешённый — пересобираем, остальные — экранируем).
+        // Раньше текст вне найденных тегов оставался как есть, и, например,
+        // <img src=x onerror=alert(1)> (без кавычек — регэксп его не находит) попадал в HTML без изменений.
+        var result = new StringBuilder(text.Length);
+        var lastIndex = 0;
+
+        foreach (Match match in TagRegex.Matches(text))
         {
-            var tagName = match.Groups[1].Value.ToLowerInvariant();
-            var attributesRaw = match.Groups[2].Value;
-            var fullTag = match.Value;
-            bool isClosing = fullTag.StartsWith("</");
+            result.Append(WebUtility.HtmlEncode(text[lastIndex..match.Index]));
+            result.Append(ProcessTag(match));
+            lastIndex = match.Index + match.Length;
+        }
 
-            if (!AllowedTags.ContainsKey(tagName))
-            {
-                // неразрешённый тег — экранируем целиком, чтобы не выполнился как HTML
-                return System.Net.WebUtility.HtmlEncode(fullTag);
-            }
+        result.Append(WebUtility.HtmlEncode(text[lastIndex..]));
+        return result.ToString();
+    }
 
-            if (isClosing)
-                return $"</{tagName}>";
+    private string ProcessTag(Match match)
+    {
+        var tagName = match.Groups[1].Value.ToLowerInvariant();
+        var attributesRaw = match.Groups[2].Value;
+        var fullTag = match.Value;
+        bool isClosing = fullTag.StartsWith("</");
 
-            // разрешённый тег — оставляем только разрешённые атрибуты, безопасно обработав значения
-            var allowedAttrs = AllowedTags[tagName];
-            var cleanAttrs = ExtractSafeAttributes(attributesRaw, allowedAttrs);
+        if (!AllowedTags.ContainsKey(tagName))
+        {
+            // неразрешённый тег — экранируем целиком, чтобы не выполнился как HTML
+            return WebUtility.HtmlEncode(fullTag);
+        }
 
-            return cleanAttrs.Length > 0
-                ? $"<{tagName} {cleanAttrs}>"
-                : $"<{tagName}>";
-        });
+        if (isClosing)
+            return $"</{tagName}>";
+
+        // разрешённый тег — оставляем только разрешённые атрибуты, безопасно обработав значения
+        var allowedAttrs = AllowedTags[tagName];
+        var cleanAttrs = ExtractSafeAttributes(attributesRaw, allowedAttrs);
+
+        return cleanAttrs.Length > 0
+            ? $"<{tagName} {cleanAttrs}>"
+            : $"<{tagName}>";
     }
 
     private string ExtractSafeAttributes(string attributesRaw, string[] allowedAttrs)
@@ -120,7 +139,7 @@ public class CommentSanitizer : ICommentSanitizer
             if (attrName == "href" && !IsSafeUrl(attrValue))
                 continue;
 
-            var safeValue = System.Net.WebUtility.HtmlEncode(attrValue);
+            var safeValue = WebUtility.HtmlEncode(attrValue);
             result.Add($"{attrName}=\"{safeValue}\"");
         }
 

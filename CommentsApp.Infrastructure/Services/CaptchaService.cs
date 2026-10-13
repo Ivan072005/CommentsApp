@@ -79,8 +79,9 @@ public class CaptchaService : ICaptchaService
 
     private static byte[] RenderPng(string code)
     {
-        var family = SystemFonts.TryGet("Arial", out var arial)
-            ? arial
+        // Windows — Arial; Linux/Docker — DejaVu Sans (ставится в Dockerfile); иначе — любой доступный
+        var family = SystemFonts.TryGet("Arial", out var arial) ? arial
+            : SystemFonts.TryGet("DejaVu Sans", out var dejaVu) ? dejaVu
             : SystemFonts.Collection.Families.First();
         var font = family.CreateFont(34, FontStyle.Bold);
 

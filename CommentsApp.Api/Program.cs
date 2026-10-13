@@ -1,28 +1,31 @@
+using CommentsApp.Api.GraphQL;
+using CommentsApp.Api.Hubs;
+using CommentsApp.Api.Middleware;
 using CommentsApp.Application.Behaviors;
+using CommentsApp.Application.Comments.Commands.CreateComment;
 using CommentsApp.Domain.Interfaces;
 using CommentsApp.Infrastructure.Messaging;
 using CommentsApp.Infrastructure.Persistence;
 using CommentsApp.Infrastructure.Services;
 using FluentValidation;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var config = builder.Configuration;
 
-// Add services to the container.
-builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+// =====================================================================
+// 1. СЕРВИСЫ
+// =====================================================================
+
+// ---------- Web API: контроллеры и документация (Scalar) ----------
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddScoped<ICommentSanitizer, CommentSanitizer>();
-builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
-builder.Services.AddSingleton<RabbitMqConnectionProvider>();
-builder.Services.AddHostedService<ImageResizeConsumer>();
-builder.Services.AddSingleton<IImageResizeQueue, RabbitMqImageResizeQueue>();
 
-var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
-                  ?? new[] { "http://localhost:5173" };
+// ---------- CORS: какие сайты могут обращаться к API ----------
+var corsOrigins = config.GetSection("Cors:Origins").Get<string[]>()
+                  ?? ["http://localhost:5173"];
 
 builder.Services.AddCors(options =>
 {
@@ -30,42 +33,75 @@ builder.Services.AddCors(options =>
         .WithOrigins(corsOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()
-        .AllowCredentials()); // понадобится для SignalR
+        .AllowCredentials()); // нужно для SignalR
 });
 
-
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration.GetConnectionString("Redis");
-});
-builder.Services.AddScoped<ICaptchaService, CaptchaService>();
+// ---------- База данных (PostgreSQL) ----------
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(config.GetConnectionString("DefaultConnection")));
+
+// ---------- Redis: коды капчи + кэш первой страницы комментариев ----------
+builder.Services.AddStackExchangeRedisCache(options =>
+    options.Configuration = config.GetConnectionString("Redis"));
+
+// ---------- RabbitMQ: очередь ресайза картинок ----------
+builder.Services.Configure<RabbitMqOptions>(config.GetSection("RabbitMq"));
+builder.Services.AddSingleton<RabbitMqConnectionProvider>();
+builder.Services.AddSingleton<IImageResizeQueue, RabbitMqImageResizeQueue>();
+builder.Services.AddHostedService<ImageResizeConsumer>();
+
+// ---------- Сервисы приложения ----------
+builder.Services.AddScoped<ICaptchaService, CaptchaService>();
+builder.Services.AddScoped<ICommentSanitizer, CommentSanitizer>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+
+// ---------- MediatR + FluentValidation (слой Application) ----------
+var applicationAssembly = typeof(CreateCommentCommand).Assembly;
 
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(CommentsApp.Application.Comments.Commands.CreateComment.CreateCommentCommand).Assembly);
+    // Application — команды/запросы/обработчики событий; Api — обработчик рассылки через SignalR
+    cfg.RegisterServicesFromAssemblies(applicationAssembly, typeof(Program).Assembly);
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
+builder.Services.AddValidatorsFromAssembly(applicationAssembly);
 
-builder.Services.AddValidatorsFromAssembly(typeof(CommentsApp.Application.Comments.Commands.CreateComment.CreateCommentCommand).Assembly);
+// ---------- SignalR (WebSocket): мгновенная рассылка новых комментариев ----------
+builder.Services.AddSignalR();
 
+// ---------- GraphQL (HotChocolate) ----------
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddTypeExtension<CommentRepliesExtension>()
+    .AddDataLoader<RepliesByParentIdDataLoader>()
+    .AddMaxExecutionDepthRule(15); // запрос глубже 15 уровней будет отклонён
+
+// =====================================================================
+// 2. КОНВЕЙЕР ОБРАБОТКИ ЗАПРОСА (порядок важен!)
+// =====================================================================
 var app = builder.Build();
 
-app.UseMiddleware<CommentsApp.Api.Middleware.ExceptionHandlingMiddleware>();
+// Ловит ошибки всех следующих шагов -> 400 / 500 в JSON
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
+// Документация API (Scalar): всегда при локальном запуске,
+// а в Docker — если включено настройкой Docs:Enabled (переменная Docs__Enabled=true)
+if (app.Environment.IsDevelopment() || config.GetValue<bool>("Docs:Enabled"))
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapOpenApi();            // /openapi/v1.json
+    app.MapScalarApiReference(); // /scalar
 }
 
-app.UseHttpsRedirection();
-
+// HTTPS-редирект — только при локальном запуске.
+// В Docker API работает за nginx по HTTP (HTTPS снимает внешний прокси/хостинг),
+// а реальный IP пользователя приходит в X-Forwarded-For (ASPNETCORE_FORWARDEDHEADERS_ENABLED).
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseCors("Frontend");
 
-// Раздача загруженных файлов: https://localhost:7066/uploads/<stored_path>
-var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "Uploads");
+// ---------- Загруженные файлы: /uploads/<stored_path> ----------
+var uploadsPath = System.IO.Path.Combine(app.Environment.ContentRootPath, "Uploads");
 Directory.CreateDirectory(uploadsPath);
 
 app.UseStaticFiles(new StaticFileOptions
@@ -75,7 +111,8 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = ctx =>
     {
         var headers = ctx.Context.Response.Headers;
-        // Браузер не будет "угадывать" тип: TXT никогда не исполнится как HTML/JS
+
+        // Браузер не "угадывает" тип: TXT никогда не исполнится как HTML/JS
         headers["X-Content-Type-Options"] = "nosniff";
 
         // Кириллица в TXT отображается правильно
@@ -85,5 +122,10 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseAuthorization();
-app.MapControllers();
+
+// ---------- Эндпоинты ----------
+app.MapControllers(); // REST:    /api/...
+app.MapGraphQL();     // GraphQL: /graphql
+app.MapHub<CommentsHub>(CommentsHub.Route); // WebSocket: /hubs/comments
+
 app.Run();
