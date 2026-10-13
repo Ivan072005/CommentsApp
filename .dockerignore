@@ -1,0 +1,11 @@
+# Не отправляем в Docker лишнее и секретное
+**/bin/
+**/obj/
+**/.vs/
+.git/
+.env
+**/appsettings.Development.json
+CommentsApp.Api/Uploads/
+frontend/
+db/
+*.md
