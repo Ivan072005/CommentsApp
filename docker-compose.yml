@@ -73,6 +73,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       # API стоит за nginx: реальный IP пользователя берём из заголовка X-Forwarded-For
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      # Документация API (Scalar) доступна по /scalar — чтобы проверяющий мог "потыкать" API
+      Docs__Enabled: "true"
       # Настройки appsettings.json переопределяются переменными окружения ("__" = вложенность)
       ConnectionStrings__DefaultConnection: Host=postgres;Database=comments_app;Username=${POSTGRES_USER:-comments};Password=${POSTGRES_PASSWORD:-comments_dev_password}
       ConnectionStrings__Redis: redis:6379

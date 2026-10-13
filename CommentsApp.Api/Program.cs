@@ -85,9 +85,11 @@ var app = builder.Build();
 // Ловит ошибки всех следующих шагов -> 400 / 500 в JSON
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
+// Документация API (Scalar): всегда при локальном запуске,
+// а в Docker — если включено настройкой Docs:Enabled (переменная Docs__Enabled=true)
+if (app.Environment.IsDevelopment() || config.GetValue<bool>("Docs:Enabled"))
 {
-    app.MapOpenApi();
+    app.MapOpenApi();            // /openapi/v1.json
     app.MapScalarApiReference(); // /scalar
 }
 
