@@ -28,6 +28,7 @@ docker compose up -d --build
 | Адрес | Что это |
 |---|---|
 | http://localhost:8080 | приложение |
+| http://localhost:8080/scalar | REST API: документация и запросы прямо из браузера (Scalar) |
 | http://localhost:8080/graphql | GraphQL + IDE Nitro |
 | http://localhost:15672 | панель RabbitMQ |
 | `localhost:5433` | PostgreSQL в Docker (для DBeaver / pgAdmin) |
@@ -136,7 +137,8 @@ src/
 | `POST` | `/api/Comments` | `multipart/form-data`: `UserName`, `Email`, `HomePage`, `Text`, `ParentId`, `CaptchaId`, `CaptchaCode`, `File` |
 | `GET` | `/uploads/{file}` | загруженный файл |
 
-При локальном запуске документация доступна в Scalar: https://localhost:7066/scalar.
+Документация и «песочница» для запросов — Scalar: http://localhost:8080/scalar (Docker)
+или https://localhost:7066/scalar (локальный запуск). В Docker включается переменной `Docs__Enabled=true`.
 
 ### GraphQL
 
