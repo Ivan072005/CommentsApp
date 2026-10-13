@@ -8,6 +8,17 @@ Redis, RabbitMQ, GraphQL (HotChocolate), SignalR.
 **Frontend:** React 19 + TypeScript + Vite, Feature-Sliced Design.
 **Инфраструктура:** Docker Compose (nginx, PostgreSQL, Redis, RabbitMQ).
 
+## Демо
+
+| | |
+|---|---|
+| Приложение | https://frontend-production-52a2.up.railway.app |
+| REST API (Scalar) | https://frontend-production-52a2.up.railway.app/scalar |
+| GraphQL (Nitro) | https://frontend-production-52a2.up.railway.app/graphql |
+
+Развёрнуто на Railway: те же Dockerfile, что и в Docker Compose — 5 сервисов
+(nginx + React, ASP.NET Core API, PostgreSQL, Redis, RabbitMQ). Демо доступно ограниченное время.
+
 ---
 
 ## Быстрый старт (Docker)
