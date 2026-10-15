@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 .env
 appsettings.Development.json
 CommentsApp.Api/Uploads/
+
+# Personal interview notes (local only)
+docs/TECHNOLOGIES.md
