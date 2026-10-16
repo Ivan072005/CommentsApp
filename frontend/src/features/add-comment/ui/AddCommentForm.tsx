@@ -159,7 +159,6 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
         label="Текст"
         required
         error={errors.text}
-        hint="Разрешены теги: <a href=&quot;&quot; title=&quot;&quot;>, <code>, <i>, <strong>. Выдели текст и нажми кнопку тега."
       >
         <div className={styles.editorBar}>
           <TagToolbar textareaRef={textareaRef} onChange={(value) => setField('text', value)} />
