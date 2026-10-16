@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useCaptcha } from '../../../entities/captcha';
 import { CommentCard } from '../../../entities/comment';
 import { createComment } from '../api/createComment';
@@ -13,6 +13,7 @@ import {
   type FormValues,
 } from '../model/validation';
 import { CheckIcon, FileIcon, RefreshIcon } from '../../../shared/ui/icons';
+import { Lightbox } from '../../../shared/ui/Lightbox';
 import { TagToolbar } from './TagToolbar';
 import styles from './AddCommentForm.module.css';
 
@@ -45,6 +46,10 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Превью выбранной картинки: временная ссылка на файл с компьютера (blob:), на сервер ничего не уходит
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [filePreviewOpen, setFilePreviewOpen] = useState(false);
+  const filePreviewRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [previewDate, setPreviewDate] = useState<string | null>(null); // null = предпросмотр скрыт
   const { captcha, error: captchaError, refresh: refreshCaptcha } = useCaptcha();
@@ -55,16 +60,38 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
     setSuccess(false);
   };
 
+  // Старую ссылку освобождаем (revokeObjectURL), иначе файл так и останется в памяти браузера
+  const updateFilePreview = (next: File | null) => {
+    if (filePreviewRef.current) URL.revokeObjectURL(filePreviewRef.current);
+    const url = next && next.type.startsWith('image/') ? URL.createObjectURL(next) : null;
+    filePreviewRef.current = url;
+    setFilePreviewUrl(url);
+    setFilePreviewOpen(false);
+  };
+
+  // Форму закрыли (например, отменили ответ) — освобождаем ссылку
+  useEffect(() => {
+    const previewRef = filePreviewRef;
+    return () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    };
+  }, []);
+
   const handleFileChange = (selected: File | null) => {
     setFile(selected);
     setErrors((e) => ({ ...e, file: validateFile(selected) ?? undefined }));
+    updateFilePreview(selected);
   };
 
   const clearFile = () => {
     setFile(null);
     setErrors((e) => ({ ...e, file: undefined }));
+    updateFilePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  // Превью показываем, только если файл прошёл проверку (формат и размер)
+  const showFilePreview = file !== null && filePreviewUrl !== null && !errors.file;
 
   const togglePreview = () =>
     setPreviewDate((d) => (d ? null : new Date().toISOString()));
@@ -215,6 +242,16 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
           <button type="button" className={styles.fileButton} onClick={() => fileInputRef.current?.click()}>
             <FileIcon /> Выбрать файл
           </button>
+          {showFilePreview && (
+            <button
+              type="button"
+              className={styles.filePreviewButton}
+              onClick={() => setFilePreviewOpen(true)}
+              title="Открыть картинку"
+            >
+              <img src={filePreviewUrl ?? undefined} alt={file?.name} className={styles.filePreviewThumb} />
+            </button>
+          )}
           <span className={file ? styles.fileName : styles.hint}>{file ? file.name : 'Файл не выбран'}</span>
           {file && (
             <button type="button" className={styles.linkButton} onClick={clearFile}>
@@ -223,6 +260,12 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
           )}
         </div>
       </Field>
+
+      {showFilePreview && filePreviewOpen && (
+        <Lightbox title={file?.name} onClose={() => setFilePreviewOpen(false)}>
+          <img src={filePreviewUrl ?? undefined} alt={file?.name} className={styles.filePreviewFull} />
+        </Lightbox>
+      )}
 
       <Field label="Код с картинки" htmlFor={fieldId('captchaCode')} required error={errors.captchaCode ?? captchaError ?? undefined}>
         <div className={styles.captcha}>
