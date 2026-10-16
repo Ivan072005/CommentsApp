@@ -266,3 +266,32 @@
   font-size: 14px;
   word-break: break-all;
 }
+
+/* Миниатюра выбранной картинки до отправки */
+.filePreviewButton {
+  display: inline-flex;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: zoom-in;
+}
+
+.filePreviewButton:hover {
+  border-color: var(--accent);
+}
+
+.filePreviewThumb {
+  display: block;
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+}
+
+.filePreviewFull {
+  display: block;
+  max-width: 100%;
+  max-height: 75vh;
+  margin: 0 auto;
+}
