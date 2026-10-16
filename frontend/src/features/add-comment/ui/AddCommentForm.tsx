@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useCaptcha } from '../../../entities/captcha';
 import { CommentCard } from '../../../entities/comment';
 import { createComment } from '../api/createComment';
@@ -35,6 +35,9 @@ const emptyValues = (): FormValues => {
 };
 
 export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddCommentFormProps) {
+  // Уникальные id: на странице может быть несколько форм (ответы), id не должны совпадать
+  const uid = useId();
+  const fieldId = (name: string) => `${uid}-${name}`;
   const [values, setValues] = useState<FormValues>(emptyValues);
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -122,8 +125,9 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
       {title && <h3 className={styles.title}>{title}</h3>}
 
       <div className={styles.row}>
-        <Field label="User Name" required error={errors.userName}>
+        <Field label="User Name" htmlFor={fieldId('userName')} required error={errors.userName}>
           <input
+            id={fieldId('userName')}
             className={inputClass('userName')}
             value={values.userName}
             onChange={(e) => setField('userName', e.target.value)}
@@ -132,8 +136,9 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
           />
         </Field>
 
-        <Field label="E-mail" required error={errors.email}>
+        <Field label="E-mail" htmlFor={fieldId('email')} required error={errors.email}>
           <input
+            id={fieldId('email')}
             className={inputClass('email')}
             type="email"
             value={values.email}
@@ -143,8 +148,9 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
           />
         </Field>
 
-        <Field label="Home page" error={errors.homePage}>
+        <Field label="Home page" htmlFor={fieldId('homePage')} error={errors.homePage}>
           <input
+            id={fieldId('homePage')}
             className={inputClass('homePage')}
             type="url"
             placeholder="https://..."
@@ -157,6 +163,7 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
 
       <Field
         label="Текст"
+        htmlFor={fieldId('text')}
         required
         error={errors.text}
       >
@@ -167,6 +174,7 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
           </button>
         </div>
         <textarea
+          id={fieldId('text')}
           ref={textareaRef}
           className={inputClass('text', styles.textarea)}
           rows={5}
@@ -216,7 +224,7 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
         </div>
       </Field>
 
-      <Field label="Код с картинки" required error={errors.captchaCode ?? captchaError ?? undefined}>
+      <Field label="Код с картинки" htmlFor={fieldId('captchaCode')} required error={errors.captchaCode ?? captchaError ?? undefined}>
         <div className={styles.captcha}>
           {captcha ? (
             <img className={styles.captchaImage} src={captcha.imageDataUri} alt="CAPTCHA" />
@@ -227,6 +235,7 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
             <RefreshIcon size={16} />
           </button>
           <input
+            id={fieldId('captchaCode')}
             className={inputClass('captchaCode')}
             value={values.captchaCode}
             onChange={(e) => setField('captchaCode', e.target.value)}
@@ -260,22 +269,27 @@ export function AddCommentForm({ title, parentId, onCreated, onCancel }: AddComm
 
 interface FieldProps {
   label: string;
+  /** id поля ввода: клик по подписи ставит фокус в это поле */
+  htmlFor?: string;
   required?: boolean;
   error?: string;
   hint?: string;
   children: ReactNode;
 }
 
-function Field({ label, required, error, hint, children }: FieldProps) {
+// Обёртка — <div>, а не <label>: иначе клик по пустому месту поля
+// "нажимает" первый элемент внутри (открывает выбор файла, обновляет капчу).
+// Подпись связана с полем через htmlFor/id.
+function Field({ label, htmlFor, required, error, hint, children }: FieldProps) {
   return (
-    <label className={styles.field}>
-      <span>
+    <div className={styles.field}>
+      <label htmlFor={htmlFor}>
         {label}
         {required && <span className={styles.required}> *</span>}
-      </span>
+      </label>
       {children}
       {hint && !error && <span className={styles.hint}>{hint}</span>}
       {error && <span className={styles.error}>{error}</span>}
-    </label>
+    </div>
   );
 }
